@@ -9,6 +9,7 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import at.fhv.sysarch.lab2.homeautomation.devices.AirCondition;
+import at.fhv.sysarch.lab2.homeautomation.devices.Environment;
 import at.fhv.sysarch.lab2.homeautomation.devices.TemperatureSensor;
 import at.fhv.sysarch.lab2.homeautomation.ui.UI;
 
@@ -21,11 +22,15 @@ public class HomeAutomationController extends AbstractBehavior<Void>{ //Controll
         return Behaviors.setup(HomeAutomationController::new);
     }
 
-    private  HomeAutomationController(ActorContext<Void> context) { //AirConditioner nimmt eine referenz vom tempSensor und fragt ihn regelmäßig ab;Als Listen sammeln, oder controller dient als dispatcher der nachrichten empfangt der abhängig davon einen redirect macht. Der Controller weiß, wer interessiert daran ist
+    private  HomeAutomationController(ActorContext<Void> context) {
+        //AirConditioner nimmt eine referenz vom tempSensor und fragt ihn regelmäßig ab;
+        //Als Listen sammeln, oder controller dient als dispatcher der nachrichten empfangt der abhängig davon einen redirect macht. Der Controller weiß, wer interessiert daran ist
         super(context);
         // TODO: consider guardians and hierarchies. Who should create and communicate with which Actors?
         this.airCondition = getContext().spawn(AirCondition.create("2", "1"), "AirCondition");
         this.tempSensor = getContext().spawn(TemperatureSensor.create(this.airCondition, "1", "1"), "temperatureSensor");
+
+        getContext().spawn(Environment.create(), "Environment");
         ActorRef<Void> ui = getContext().spawn(UI.create(this.tempSensor, this.airCondition), "UI");
         getContext().getLog().info("HomeAutomation Application started");
     }
