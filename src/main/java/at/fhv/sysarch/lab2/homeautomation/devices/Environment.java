@@ -21,7 +21,7 @@ public class Environment extends AbstractBehavior<Environment.EnvironmentCommand
     public static final class WeatherConditionsChanger implements EnvironmentCommand {
         final Optional<Boolean> isSunny;
 
-        public WeatherConditionsChanger(Optional<Boolean> isSunny) { this.isSunny = isSunny; }
+        public WeatherConditionsChanger(Optional<Boolean> isSunny)  {this.isSunny = isSunny; }
     }
 
     private double temperature = 20;

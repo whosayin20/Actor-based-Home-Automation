@@ -1,5 +1,6 @@
 package at.fhv.sysarch.lab2.homeautomation.devices;
 
+import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
 import akka.actor.typed.javadsl.AbstractBehavior;
@@ -10,52 +11,75 @@ import akka.actor.typed.javadsl.Receive;
 import java.util.Optional;
 
 public class Blind extends AbstractBehavior<Blind.BlindCommand> {
-    public interface BlindCommand { }
+    public interface BlindCommand {
+    }
 
-    public static final class CloseBlind implements BlindCommand {
-        final Optional<Boolean> isClosed;
+    public static final class OpenCloseBlind implements BlindCommand {
+        final Optional<Boolean> isSunny;
 
-        public CloseBlind(Optional<Boolean> isClosed) {
-            this.isClosed = isClosed;
+        public OpenCloseBlind(Optional<Boolean> isSunny) {
+            this.isSunny = isSunny;
         }
     }
 
+    public static final class Response implements BlindCommand {
+        public Optional<Boolean> isPlaying;
 
-    private boolean isClosed = true;
+        public Response(Optional<Boolean> isPlaying) {
+            this.isPlaying = isPlaying;
+        }
+    }
 
-    private Blind(ActorContext<Blind.BlindCommand> context) {
+    public static Behavior<BlindCommand> create(ActorRef<MediaStation.MediaCommand> mediaStation) {
+        return Behaviors.setup(context -> new Blind(context, mediaStation));
+    }
+
+    private ActorRef<MediaStation.MediaCommand> mediaStation;
+
+    private Blind(ActorContext<BlindCommand> context, ActorRef<MediaStation.MediaCommand> mediaStation) {
         super(context);
-        getContext().getLog().info("Blind opened");
+        this.mediaStation = mediaStation;
+        getContext().getLog().info("Opening Blind");
     }
-
-    public static Behavior<BlindCommand> create() {
-        return Behaviors.setup(Blind::new);
-    }
-
 
     @Override
     public Receive<BlindCommand> createReceive() {
         return newReceiveBuilder()
-                .onMessage(CloseBlind.class, this::onCloseBlind)
+                .onMessage(OpenCloseBlind.class, this::onCloseBlind)
+                .onMessage(Response.class, this::processResponse)
                 .onSignal(PostStop.class, signal -> onPostStop())
                 .build();
     }
 
-    private Behavior<BlindCommand> onCloseBlind(CloseBlind c) {
-        getContext().getLog().info("Blind closed");
-
-        if(c.isClosed.get()) {
-            this.isClosed = true;
+    private Behavior<BlindCommand> onCloseBlind(OpenCloseBlind ob) {
+        if (ob.isSunny.get() == true) { //and movie not playing
+            getContext().getLog().info("Closing Blind");
+            return Behaviors.receive(BlindCommand.class)
+                    .onMessage(OpenCloseBlind.class, this::onOpenBlind)
+                    .onMessage(Response.class, this::processResponse)
+                    .onSignal(PostStop.class, signal -> onPostStop())
+                    .build();
         }
-
         return this;
     }
 
-    private Behavior<BlindCommand> onOpenBlind(CloseBlind c) {
-        getContext().getLog().info("Blind closed");
+    private Behavior<BlindCommand> onOpenBlind(OpenCloseBlind ob) {
+        if (ob.isSunny.get() == false) {
+            getContext().getLog().info("Checking if Media Station is playing a movie");
+            this.mediaStation.tell(new MediaStation.Request(super.getContext().getSelf()));
+        }
+        return this;
+    }
 
-        if(!c.isClosed.get()) {
-            this.isClosed = false;
+    private Behavior<BlindCommand> processResponse(Response r) {
+        if(!r.isPlaying.get()) {
+            getContext().getLog().info("Opening Blind");
+            return Behaviors.receive(BlindCommand.class)
+                    .onMessage(OpenCloseBlind.class, this::onCloseBlind)
+                    .onSignal(PostStop.class, signal -> onPostStop())
+                    .build();
+        } else {
+            getContext().getLog().info("Blinds won't open - Movie is playing");
         }
 
         return this;

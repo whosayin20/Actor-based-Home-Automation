@@ -40,20 +40,18 @@ public class AirCondition extends AbstractBehavior<AirCondition.AirConditionComm
         }
     }
 
+    public static Behavior<AirConditionCommand> create(String groupId, String deviceId) {
+        return Behaviors.setup(context -> new AirCondition(context, groupId, deviceId));
+    }
+
     private final String groupId;
     private final String deviceId;
-    private boolean active = false;
-    private boolean poweredOn = true;
 
     private AirCondition(ActorContext<AirConditionCommand> context, String groupId, String deviceId) {
         super(context);
         this.groupId = groupId;
         this.deviceId = deviceId;
         getContext().getLog().info("AirCondition started");
-    }
-
-    public static Behavior<AirConditionCommand> create(String groupId, String deviceId) {
-        return Behaviors.setup(context -> new AirCondition(context, groupId, deviceId));
     }
 
     @Override
@@ -70,11 +68,9 @@ public class AirCondition extends AbstractBehavior<AirCondition.AirConditionComm
         // TODO: process temperature
         if(r.value.get() >= 20) {
             getContext().getLog().info("Aircondition actived");
-            this.active = true;
         }
         else {
             getContext().getLog().info("Aircondition deactived");
-            this.active =  false;
         }
 
         return Behaviors.same();
@@ -103,7 +99,6 @@ public class AirCondition extends AbstractBehavior<AirCondition.AirConditionComm
     }
 
     private Behavior<AirConditionCommand> powerOff() {
-        this.poweredOn = false;
         return Behaviors.receive(AirConditionCommand.class)
                 .onMessage(PowerAirCondition.class, this::onPowerAirConditionOn)
                 .onSignal(PostStop.class, signal -> onPostStop())

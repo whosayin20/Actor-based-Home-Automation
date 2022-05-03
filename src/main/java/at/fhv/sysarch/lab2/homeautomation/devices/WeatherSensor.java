@@ -2,6 +2,7 @@ package at.fhv.sysarch.lab2.homeautomation.devices;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
+import akka.actor.typed.PostStop;
 import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
@@ -9,31 +10,41 @@ import akka.actor.typed.javadsl.Receive;
 
 import java.util.Optional;
 
-public class WeatherSensor extends AbstractBehavior<WeatherSensor.WeatherSensorCommand> {
-    public interface WeatherSensorCommand {}
+public class WeatherSensor extends AbstractBehavior<WeatherSensor.WeatherCommand> {
+    public interface WeatherCommand {}
 
-    public static final class readWeatherCondition implements WeatherSensor.WeatherSensorCommand {
+    public static final class DetermineWeatherCondition implements WeatherCommand {
         final Optional<Boolean> isSunny;
 
-        public readWeatherCondition(Optional<Boolean> isSunny) {
+        public DetermineWeatherCondition(Optional<Boolean> isSunny) {
             this.isSunny = isSunny;
         }
     }
 
-    public static Behavior<WeatherSensor.WeatherSensorCommand> create(ActorRef<Blind.BlindCommand> blind, String groupId, String deviceId) {
-        return Behaviors.setup(context -> new WeatherSensor(context, blind, groupId, deviceId));
+    public static Behavior<WeatherCommand> create(ActorRef<Blind.BlindCommand> blind) {
+        return Behaviors.setup(context -> new WeatherSensor(context, blind));
     }
+    private ActorRef<Blind.BlindCommand> blind;
 
-    public WeatherSensor(ActorContext<WeatherSensorCommand> context, ActorRef<Blind.BlindCommand> blind, String groupId, String deviceId) {
+    private WeatherSensor(ActorContext<WeatherCommand> context, ActorRef<Blind.BlindCommand> blind) {
         super(context);
-
-
+        this.blind = blind;
         getContext().getLog().info("WeatherSensor started");
     }
 
     @Override
-    public Receive<WeatherSensorCommand> createReceive() {
-        return null;
+    public Receive<WeatherCommand> createReceive() {
+        return newReceiveBuilder()
+                .onMessage(DetermineWeatherCondition.class, this::onReadWeather)
+                .onSignal(PostStop.class, signal -> onPostStop())
+                .build();
+    }
+
+    private Behavior<WeatherSensor.WeatherCommand> onReadWeather(DetermineWeatherCondition r) {
+        String condition = r.isSunny.get() ? "sunny weather" : "cloudy weather";
+        getContext().getLog().info("WeatherSensor detected {}", condition);
+        this.blind.tell(new Blind.OpenCloseBlind(r.isSunny));
+        return this;
     }
 
     private WeatherSensor onPostStop() {
