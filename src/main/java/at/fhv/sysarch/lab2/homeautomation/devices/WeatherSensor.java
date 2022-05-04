@@ -41,7 +41,7 @@ public class WeatherSensor extends AbstractBehavior<WeatherSensor.WeatherCommand
     }
 
     private Behavior<WeatherSensor.WeatherCommand> onReadWeather(DetermineWeatherCondition r) {
-        String condition = r.isSunny.get() ? "sunny weather" : "cloudy weather";
+        String condition = r.isSunny.get() ? "SUNNY weather" : "CLOUDY weather";
         getContext().getLog().info("WeatherSensor detected {}", condition);
         this.blind.tell(new Blind.OpenCloseBlind(r.isSunny));
         return this;

@@ -39,14 +39,14 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
     }
 
 
-    public static Behavior<MediaCommand> create(ActorRef<Blind.BlindCommand> blind) {
-        return Behaviors.setup(context -> new MediaStation(context, blind));
+    public static Behavior<MediaCommand> create() {
+        return Behaviors.setup(context -> new MediaStation(context));
     }
 
-    private ActorRef<Blind.BlindCommand> blind;
-    private MediaStation(ActorContext<MediaCommand> context, ActorRef<Blind.BlindCommand> blind) {
+    private boolean isPlaying;
+
+    private MediaStation(ActorContext<MediaCommand> context) {
         super(context);
-        this.blind = blind;
         getContext().getLog().info("Mediastation started");
     }
 
@@ -62,7 +62,7 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
 
 
     private Behavior<MediaCommand> onRequest(Request request) {
-        request.replyTo.tell(new Blind.Response(Optional.of(true)));
+        request.replyTo.tell(new Blind.Response(Optional.of(isPlaying)));
         return Behaviors.same();
     }
 
@@ -74,10 +74,10 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
                     .onSignal(PostStop.class, signal -> onPostStop())
                     .build();
         } else {
-            getContext().getLog().info("Media Station already playing");
+            getContext().getLog().info("Media Station already started");
         }
 
-        return this;
+        return Behaviors.same();
     }
 
     private Behavior<MediaCommand> onPowerMediaStationOn(PowerMediaStation p) {
@@ -90,7 +90,7 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
                     .onSignal(PostStop.class, signal -> onPostStop())
                     .build();
         } else {
-            getContext().getLog().info("Media Station already closed");
+            getContext().getLog().info("Media Station already turned off");
         }
         return Behaviors.same();
     }
@@ -98,11 +98,12 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
     private Behavior<MediaStation.MediaCommand> onPlayMovie(PlayMovie pm) {
         if(pm.play.get() == true) {
             getContext().getLog().info("Turning on Movie");
-            this.blind.tell(new Blind.OpenCloseBlind(Optional.of(Boolean.TRUE)));
+            isPlaying = true;
         } else {
             getContext().getLog().info("Turning off Movie");
+            isPlaying = false;
         }
-        return this;
+        return Behaviors.same();
     }
 
     private MediaStation onPostStop() {

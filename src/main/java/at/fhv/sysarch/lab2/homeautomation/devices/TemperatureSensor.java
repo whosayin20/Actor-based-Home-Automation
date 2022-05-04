@@ -22,19 +22,15 @@ public class TemperatureSensor extends AbstractBehavior<TemperatureSensor.Temper
         }
     }
 
-    public static Behavior<TemperatureCommand> create(ActorRef<AirCondition.AirConditionCommand> airCondition, String groupId, String deviceId) {
-        return Behaviors.setup(context -> new TemperatureSensor(context, airCondition, groupId, deviceId));
+    public static Behavior<TemperatureCommand> create(ActorRef<AirCondition.AirConditionCommand> airCondition) {
+        return Behaviors.setup(context -> new TemperatureSensor(context, airCondition));
     }
 
-    private final String groupId;
-    private final String deviceId;
     private ActorRef<AirCondition.AirConditionCommand> airCondition;
 
-    private TemperatureSensor(ActorContext<TemperatureCommand> context, ActorRef<AirCondition.AirConditionCommand> airCondition, String groupId, String deviceId) {
+    private TemperatureSensor(ActorContext<TemperatureCommand> context, ActorRef<AirCondition.AirConditionCommand> airCondition) {
         super(context);
         this.airCondition = airCondition;
-        this.groupId = groupId;
-        this.deviceId = deviceId;
 
         getContext().getLog().info("TemperatureSensor started");
     }
@@ -54,7 +50,7 @@ public class TemperatureSensor extends AbstractBehavior<TemperatureSensor.Temper
     }
 
     private TemperatureSensor onPostStop() {
-        getContext().getLog().info("TemperatureSensor actor {}-{} stopped", groupId, deviceId);
+        getContext().getLog().info("TemperatureSensor actor {}-{} stopped");
         return this;
     }
 

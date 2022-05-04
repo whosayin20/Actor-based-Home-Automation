@@ -3,11 +3,8 @@ package at.fhv.sysarch.lab2.homeautomation.devices;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
-import akka.actor.typed.javadsl.AbstractBehavior;
-import akka.actor.typed.javadsl.ActorContext;
-import akka.actor.typed.javadsl.Behaviors;
-import akka.actor.typed.javadsl.Receive;
-
+import akka.actor.typed.javadsl.*;
+import java.time.Duration;
 import java.util.Optional;
 
 public class Blind extends AbstractBehavior<Blind.BlindCommand> {
@@ -22,6 +19,11 @@ public class Blind extends AbstractBehavior<Blind.BlindCommand> {
         }
     }
 
+    public static final class CheckMovieStatus implements BlindCommand {
+        public CheckMovieStatus() {
+        }
+    }
+
     public static final class Response implements BlindCommand {
         public Optional<Boolean> isPlaying;
 
@@ -31,60 +33,76 @@ public class Blind extends AbstractBehavior<Blind.BlindCommand> {
     }
 
     public static Behavior<BlindCommand> create(ActorRef<MediaStation.MediaCommand> mediaStation) {
-        return Behaviors.setup(context -> new Blind(context, mediaStation));
+        return Behaviors.setup(context -> Behaviors.withTimers(timers -> new Blind(context, timers, mediaStation)));
     }
 
     private ActorRef<MediaStation.MediaCommand> mediaStation;
 
-    private Blind(ActorContext<BlindCommand> context, ActorRef<MediaStation.MediaCommand> mediaStation) {
+    private final TimerScheduler<BlindCommand> movieTimeScheduler;
+
+    private boolean isMovieCurrentlyPlaying;
+
+    private Blind(ActorContext<BlindCommand> context, TimerScheduler<BlindCommand> tempTimer, ActorRef<MediaStation.MediaCommand> mediaStation) {
         super(context);
         this.mediaStation = mediaStation;
-        getContext().getLog().info("Opening Blind");
+        this.movieTimeScheduler = tempTimer;
+        this.movieTimeScheduler.startTimerAtFixedRate(new CheckMovieStatus(), Duration.ofSeconds(10));
+        getContext().getLog().info("Opened Blind");
     }
 
     @Override
     public Receive<BlindCommand> createReceive() {
         return newReceiveBuilder()
+                .onMessage(CheckMovieStatus.class, this::reqMovieStatus)
                 .onMessage(OpenCloseBlind.class, this::onCloseBlind)
-                .onMessage(Response.class, this::processResponse)
+                .onMessage(Response.class, this::processResponseFromMediaStation)
                 .onSignal(PostStop.class, signal -> onPostStop())
                 .build();
     }
 
-    private Behavior<BlindCommand> onCloseBlind(OpenCloseBlind ob) {
-        if (ob.isSunny.get() == true) { //and movie not playing
+    private Behavior<BlindCommand> onCloseBlind(OpenCloseBlind ocb) {
+        if (ocb.isSunny.get() == true) {
             getContext().getLog().info("Closing Blind");
-            return Behaviors.receive(BlindCommand.class)
-                    .onMessage(OpenCloseBlind.class, this::onOpenBlind)
-                    .onMessage(Response.class, this::processResponse)
-                    .onSignal(PostStop.class, signal -> onPostStop())
-                    .build();
+            return close();
         }
-        return this;
+        return Behaviors.same();
     }
 
-    private Behavior<BlindCommand> onOpenBlind(OpenCloseBlind ob) {
-        if (ob.isSunny.get() == false) {
-            getContext().getLog().info("Checking if Media Station is playing a movie");
-            this.mediaStation.tell(new MediaStation.Request(super.getContext().getSelf()));
-        }
-        return this;
+    private Behavior<Blind.BlindCommand> close() {
+        return Behaviors.receive(BlindCommand.class)
+                .onMessage(CheckMovieStatus.class, this::reqMovieStatus)
+                .onMessage(OpenCloseBlind.class, this::onOpenBlind)
+                .onMessage(Response.class, this::processResponseFromMediaStation)
+                .onSignal(PostStop.class, signal -> onPostStop())
+                .build();
     }
 
-    private Behavior<BlindCommand> processResponse(Response r) {
-        if(!r.isPlaying.get()) {
-            getContext().getLog().info("Opening Blind");
-            return Behaviors.receive(BlindCommand.class)
-                    .onMessage(OpenCloseBlind.class, this::onCloseBlind)
-                    .onSignal(PostStop.class, signal -> onPostStop())
-                    .build();
-        } else {
-            getContext().getLog().info("Blinds won't open - Movie is playing");
-        }
-
-        return this;
+    //Überprüft in einem Zeitintervall, ob ein Film abspielt. Wenn ja, close blind.
+    private Behavior<BlindCommand> reqMovieStatus(CheckMovieStatus cms) {
+        this.mediaStation.tell(new MediaStation.Request(super.getContext().getSelf()));
+        return Behaviors.same();
     }
 
+    private Behavior<BlindCommand> onOpenBlind(OpenCloseBlind ocb) {
+        if (ocb.isSunny.get() == false) {
+            if (isMovieCurrentlyPlaying == false) {
+                getContext().getLog().info("Opening Blind");
+                return this.createReceive();
+            } else {
+                getContext().getLog().info("Can not Open Blind - Movie is currently playing");
+            }
+        }
+        return Behaviors.same();
+    }
+
+    private Behavior<BlindCommand> processResponseFromMediaStation(Response r) {
+        isMovieCurrentlyPlaying = r.isPlaying.get();
+        if (r.isPlaying.get()) {
+            getContext().getLog().info("Movie is currently playing - Blinds are closed");
+            return close();
+        }
+        return Behaviors.same();
+    }
 
     private Blind onPostStop() {
         getContext().getLog().info("Blind actor {}-{} stopped");
