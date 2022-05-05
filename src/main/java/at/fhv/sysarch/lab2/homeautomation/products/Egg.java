@@ -1,7 +1,10 @@
 package at.fhv.sysarch.lab2.homeautomation.products;
 
+import java.math.BigDecimal;
+
 public class Egg extends Product {
-    public Egg(String name, int weight) {
-        super(name, weight);
+    public Egg() {
+
+        super("Egg", 4, new BigDecimal(3.42));
     }
 }
