@@ -6,10 +6,12 @@ import akka.actor.typed.PostStop;
 import akka.actor.typed.javadsl.*;
 import at.fhv.sysarch.lab2.homeautomation.products.Product;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
 
@@ -69,6 +71,27 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
         }
     }
 
+    public static final class OrderCreated implements FridgeCommand {
+        final Optional<Product> product;
+        final Optional<LocalDateTime> dateTimeOfOrder;
+
+        final Optional<String> orderId;
+
+        final Optional<BigDecimal> price;
+
+        public OrderCreated(Optional<Product> product, Optional<LocalDateTime> dateTimeOfOrder, Optional<String> orderId, Optional<BigDecimal> price) {
+            this.product = product;
+            this.dateTimeOfOrder = dateTimeOfOrder;
+            this.orderId = orderId;
+            this.price = price;
+        }
+    }
+
+    public static final class ShowHistory implements FridgeCommand {
+        public ShowHistory() {
+        }
+    }
+
     public static final class ControlProducts implements FridgeCommand {
 
         public ControlProducts() {
@@ -81,6 +104,8 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
 
     private HashMap<Product, Integer> productQuantity;
 
+    private List<OrderCreated> history;
+
     private ActorRef<WeightSensor.WeightSensorCommand> weightSensor;
 
     private ActorRef<StorageSensor.StorageSensorCommand> storageSensor;
@@ -90,15 +115,21 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
     private Fridge(ActorContext<FridgeCommand> context, TimerScheduler<Fridge.FridgeCommand> fridgeTimer) {
         super(context);
         this.fridgeTimeScheduler = fridgeTimer;
-        this.fridgeTimeScheduler.startTimerAtFixedRate(new Fridge.ControlProducts(), Duration.ofSeconds(10));
-        this.weightSensor = getContext().spawn(WeightSensor.create(1000), "weightSensor");
-        this.storageSensor = getContext().spawn(StorageSensor.create(20), "storageSensor");
+        this.fridgeTimeScheduler.startTimerAtFixedRate(new Fridge.ControlProducts(), Duration.ofSeconds(60));
+        this.weightSensor = getContext().spawn(WeightSensor.create(80), "weightSensor");
+        this.storageSensor = getContext().spawn(StorageSensor.create(5), "storageSensor");
+        this.productQuantity = new HashMap<>();
+        this.history = new ArrayList<>();
         getContext().getLog().info("Fridge started");
     }
 
     @Override
     public Receive<Fridge.FridgeCommand> createReceive() {
         return newReceiveBuilder()
+                .onMessage(Consume.class, this::onConsume)
+                .onMessage(ShowHistory.class, this::onShowHistory)
+                .onMessage(OrderCreated.class, this::onOrderCreated)
+                .onMessage(CommitOrder.class, this::onCommitOrder)
                 .onMessage(ResponseWeightSensor.class, this::onResponseWeightSensor)
                 .onMessage(ResponseStorageSensor.class, this::onResponseStorageSensor)
                 .onMessage(ControlProducts.class, this::onControlProducts)
@@ -133,7 +164,6 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
     }
 
 
-
     private Behavior<FridgeCommand> onOrderProduct(OrderProduct op) {
         Product p = op.product.get();
 
@@ -145,6 +175,7 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
     private Behavior<FridgeCommand> onControlProducts(ControlProducts cp) {
         for (Map.Entry<Product, Integer> pq : productQuantity.entrySet()) {
             if (pq.getValue() == 0) {
+                getContext().getLog().info("{} is empty - ordering new", pq.getKey().getName());
                 super.getContext().getSelf().tell(new Fridge.OrderProduct(Optional.of(pq.getKey())));
             }
         }
@@ -159,7 +190,6 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
         } else {
             getContext().getLog().info("Fridge doesn't has enough weight load");
         }
-
         return Behaviors.same();
     }
 
@@ -170,18 +200,73 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
             super.getContext().getSelf().tell(new Fridge.CommitOrder(Optional.of(product)));
         } else {
             getContext().getLog().info("Fridge has not enough storage");
-
         }
         return Behaviors.same();
     }
 
-    private Behavior<FridgeCommand> commitOrder(CommitOrder co) {
+    private Behavior<FridgeCommand> onCommitOrder(CommitOrder co) {
+        ActorRef<Order.OrderCommand> order;
+        order = getContext().spawn(Order.create(co.product.get(), super.getContext().getSelf()), "Order");
 
-        getContext().spawn(Order.create(co.product.get()), "Order");
+        order.tell(new Order.GracefulShutdown());
+
+        return Behaviors.same();
+    }
+
+    private Behavior<FridgeCommand> onOrderCreated(OrderCreated oc) {
+        history.add(oc);
+        Product product = oc.product.get();
+
+        for (Map.Entry<Product, Integer> pq : productQuantity.entrySet()) {
+            if (pq.getKey().getName().equals(product.getName())) {
+                pq.setValue(pq.getValue() + 1);
+                return Behaviors.same();
+            }
+        }
+        this.productQuantity.put(product, 1);
+
+        return Behaviors.same();
+    }
+
+    private Behavior<FridgeCommand> onShowHistory(ShowHistory sh) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        if (history.size() > 0) {
+            getContext().getLog().info("____________________________________________________________");
+        }
+        for (int i = 0; i < history.size(); i++) {
+            getContext().getLog().info("Order-Id: " + history.get(i).orderId.get() + " | "
+                    + history.get(i).dateTimeOfOrder.get().format(formatter) + " | "
+                    + history.get(i).product.get().getName() + " | €"
+                    + history.get(i).price.get().setScale(2, RoundingMode.CEILING));
+        }
+        if (history.size() > 0) {
+            getContext().getLog().info("____________________________________________________________");
+        } else {
+            getContext().getLog().info("The history is empty");
+        }
+        return Behaviors.same();
+    }
 
 
+    private Behavior<FridgeCommand> onConsume(Consume c) {
+        Product product = c.product.get();
 
+        boolean isAvailable = false;
 
+        for (Map.Entry<Product, Integer> pq : productQuantity.entrySet()) {
+            if (pq.getKey().getName().equals(product.getName())) {
+                getContext().getLog().info("Consuming {}", product.getName());
+                if (pq.getValue() - 1 >= 0) {
+                    pq.setValue(pq.getValue() - 1);
+                }
+                this.weightSensor.tell(new WeightSensor.TakeWeight(Optional.of(product.getWeight())));
+                this.storageSensor.tell(new StorageSensor.TakeStorage(Optional.of(1)));
+                isAvailable = true;
+            }
+        }
+        if (!isAvailable) {
+            getContext().getLog().info("{} not available", product.getName());
+        }
         return Behaviors.same();
     }
 

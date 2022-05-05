@@ -37,7 +37,7 @@ public class WeightSensor extends AbstractBehavior<WeightSensor.WeightSensorComm
         return Behaviors.setup(context -> new WeightSensor(context, maxWeight));
     }
 
-    final double maxWeight;
+    final double maxWeight; //in gram
     double currentWeight;
 
     private WeightSensor(ActorContext<WeightSensorCommand> context, double maxWeight) {
@@ -59,7 +59,6 @@ public class WeightSensor extends AbstractBehavior<WeightSensor.WeightSensorComm
         Product product = pw.product.get();
         double weight = product.getWeight();
         if(currentWeight + weight <= maxWeight && weight > 0) {
-            getContext().getLog().info("Putting " + weight + "g into the fridge");
             currentWeight += weight;
             pw.replyTo.tell(new Fridge.ResponseWeightSensor(Optional.of(Boolean.TRUE), Optional.of(product)));
         } else {

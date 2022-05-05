@@ -60,7 +60,6 @@ public class StorageSensor extends AbstractBehavior<StorageSensor.StorageSensorC
         Product product = ps.product.get();
         int storage = 1;
         if(currentStorage + storage <= maxStorage && storage > 0) {
-            getContext().getLog().info("Putting " + storage + " products into the fridge");
             currentStorage += storage;
             ps.replyTo.tell((new Fridge.ResponseStorageSensor(Optional.of(Boolean.TRUE), Optional.of((product)))));
         } else {
@@ -72,7 +71,7 @@ public class StorageSensor extends AbstractBehavior<StorageSensor.StorageSensorC
     private Behavior<StorageSensorCommand> onTakeStorage(TakeStorage ts) {
         int storage = ts.storage.get();
         if (storage > 0){
-            getContext().getLog().info("Removing " + storage + " products from the fridge");
+            getContext().getLog().info("Removing " + storage + " product from the fridge");
             this.currentStorage -= storage;
         }
         return Behaviors.same();
