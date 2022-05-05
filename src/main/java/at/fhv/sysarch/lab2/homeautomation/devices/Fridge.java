@@ -1,5 +1,6 @@
 package at.fhv.sysarch.lab2.homeautomation.devices;
 
+import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
 import akka.actor.typed.javadsl.*;
@@ -39,9 +40,39 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
         }
     }
 
+    public static final class ResponseWeightSensor implements FridgeCommand {
+        final Optional<Boolean> value;
+        final Optional<Product> product;
+
+        public ResponseWeightSensor(Optional<Boolean> value, Optional<Product> product) {
+            this.value = value;
+            this.product = product;
+        }
+    }
+
+    public static final class ResponseStorageSensor implements FridgeCommand {
+        final Optional<Boolean> value;
+
+        final Optional<Product> product;
+
+        public ResponseStorageSensor(Optional<Boolean> value, Optional<Product> product) {
+            this.value = value;
+            this.product = product;
+        }
+    }
+
+    public static final class CommitOrder implements FridgeCommand {
+        final Optional<Product> product;
+
+        public CommitOrder(Optional<Product> product) {
+            this.product = product;
+        }
+    }
+
     public static final class ControlProducts implements FridgeCommand {
 
-        public ControlProducts() { }
+        public ControlProducts() {
+        }
     }
 
     public static Behavior<FridgeCommand> create() {
@@ -50,8 +81,9 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
 
     private HashMap<Product, Integer> productQuantity;
 
-    private final int maxQuantity;
-    private final int maxWeightCapacity;
+    private ActorRef<WeightSensor.WeightSensorCommand> weightSensor;
+
+    private ActorRef<StorageSensor.StorageSensorCommand> storageSensor;
 
     private final TimerScheduler<Fridge.FridgeCommand> fridgeTimeScheduler;
 
@@ -59,14 +91,16 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
         super(context);
         this.fridgeTimeScheduler = fridgeTimer;
         this.fridgeTimeScheduler.startTimerAtFixedRate(new Fridge.ControlProducts(), Duration.ofSeconds(10));
-        this.maxQuantity = 5;
-        this.maxWeightCapacity = 4;
+        this.weightSensor = getContext().spawn(WeightSensor.create(1000), "weightSensor");
+        this.storageSensor = getContext().spawn(StorageSensor.create(20), "storageSensor");
         getContext().getLog().info("Fridge started");
     }
 
     @Override
     public Receive<Fridge.FridgeCommand> createReceive() {
         return newReceiveBuilder()
+                .onMessage(ResponseWeightSensor.class, this::onResponseWeightSensor)
+                .onMessage(ResponseStorageSensor.class, this::onResponseStorageSensor)
                 .onMessage(ControlProducts.class, this::onControlProducts)
                 .onMessage(OrderProduct.class, this::onOrderProduct)
                 .onMessage(PowerFridge.class, this::onPowerFridgeOff)
@@ -98,22 +132,13 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
         return Behaviors.same();
     }
 
+
+
     private Behavior<FridgeCommand> onOrderProduct(OrderProduct op) {
         Product p = op.product.get();
 
-        int newWeight = calcCurrentWeight() + p.getWeight();
-        int newQuantity = calcCurrentQuantity() + 1;
+        this.weightSensor.tell(new WeightSensor.PutWeight(super.getContext().getSelf(), Optional.of(p)));
 
-        if (this.maxWeightCapacity >= newWeight) {
-            if(this.maxQuantity <= newQuantity) {
-                getContext().getLog().info("Ordering" + p.getName());
-                getContext().spawn(Order.create(op.product.get()), "Order");
-            } else {
-                getContext().getLog().info("Maximum Quantity exceeded");
-            }
-        } else {
-            getContext().getLog().info("Maximum weight exceeded");
-        }
         return Behaviors.same();
     }
 
@@ -126,20 +151,16 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
         return Behaviors.same();
     }
 
-    private int calcCurrentWeight() {
-        int totalWeight = 0;
-        for (Map.Entry<Product, Integer> pq : productQuantity.entrySet()) {
-            totalWeight += pq.getKey().getWeight() * pq.getValue();
+    private Behavior<FridgeCommand> onResponseWeightSensor(ResponseWeightSensor rws) {
+        Product product = rws.product.get();
+        if (rws.value.get()) {
+            getContext().getLog().info("Fridge has enough weight load");
+            this.storageSensor.tell(new StorageSensor.PutStorage(super.getContext().getSelf(), Optional.of(product)));
+        } else {
+            getContext().getLog().info("Fridge doesn't has enough weight load");
         }
-        return totalWeight;
-    }
 
-    private int calcCurrentQuantity() {
-        int totalWeight = 0;
-        for (Map.Entry<Product, Integer> pq : productQuantity.entrySet()) {
-            totalWeight += pq.getValue();
-        }
-        return totalWeight;
+        return Behaviors.same();
     }
 
     private Fridge onPostStop() {

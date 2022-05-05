@@ -2,9 +2,9 @@ package at.fhv.sysarch.lab2.homeautomation.products;
 
 public abstract class Product {
     private String name;
-    private int weight;
+    private double weight;
 
-    public Product(String name, int weight) {
+    public Product(String name, double weight) {
         this.name = name;
         this.weight = weight;
     }
@@ -13,7 +13,7 @@ public abstract class Product {
         return name;
     }
 
-    public int getWeight() {
+    public double getWeight() {
         return weight;
     }
 }
