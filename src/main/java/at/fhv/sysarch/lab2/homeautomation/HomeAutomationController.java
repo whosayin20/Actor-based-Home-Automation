@@ -23,16 +23,16 @@ public class HomeAutomationController extends AbstractBehavior<Void>{ //Controll
         return Behaviors.setup(HomeAutomationController::new);
     }
 
-    private  HomeAutomationController(ActorContext<Void> context) {
+    private HomeAutomationController(ActorContext<Void> context) {
         //AirConditioner nimmt eine referenz vom tempSensor und fragt ihn regelmäßig ab;
         //Als Listen sammeln, oder controller dient als dispatcher der nachrichten empfangt der abhängig davon einen redirect macht. Der Controller weiß, wer interessiert daran ist
         super(context);
-        // TODO: consider guardians and hierarchies. Who should create and communicate with which Actors?
         this.blind = getContext().spawn(Blind.create(), "Blind");
         this.mediasStation = getContext().spawn(MediaStation.create(this.blind), "MediaStation");
         this.airCondition = getContext().spawn(AirCondition.create(), "AirCondition");
         this.tempSensor = getContext().spawn(TemperatureSensor.create(this.airCondition), "temperatureSensor");
         this.weatherSensor = getContext().spawn(WeatherSensor.create(this.blind), "weatherSensor");
+
         //getContext().spawn(Environment.create(this.tempSensor, this.weatherSensor), "Environment");
         ActorRef<Void> ui = getContext().spawn(UI.create(this.tempSensor, this.airCondition, this.weatherSensor, this.mediasStation), "UI");
         getContext().getLog().info("HomeAutomation Application started");

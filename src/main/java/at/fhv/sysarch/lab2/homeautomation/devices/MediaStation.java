@@ -30,7 +30,6 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
         }
     }
 
-
     public static Behavior<MediaCommand> create(ActorRef<Blind.BlindCommand> blind) {
         return Behaviors.setup(context -> new MediaStation(context, blind));
     }
@@ -54,7 +53,7 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
 
 
     private Behavior<MediaCommand> onPowerMediaStationOff(PowerMediaStation p) {
-        if (p.value.get() == false) { //and movie not playing
+        if (p.value.get() == false) {
             getContext().getLog().info("Turning Off Media Station");
             return Behaviors.receive(MediaCommand.class)
                     .onMessage(PowerMediaStation.class, this::onPowerMediaStationOn)
