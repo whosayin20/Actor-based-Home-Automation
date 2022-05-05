@@ -163,6 +163,28 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
         return Behaviors.same();
     }
 
+    private Behavior<FridgeCommand> onResponseStorageSensor(ResponseStorageSensor rs) {
+        Product product = rs.product.get();
+        if (rs.value.get()) {
+            getContext().getLog().info("Fridge has enough storage");
+            super.getContext().getSelf().tell(new Fridge.CommitOrder(Optional.of(product)));
+        } else {
+            getContext().getLog().info("Fridge has not enough storage");
+
+        }
+        return Behaviors.same();
+    }
+
+    private Behavior<FridgeCommand> commitOrder(CommitOrder co) {
+
+        getContext().spawn(Order.create(co.product.get()), "Order");
+
+
+
+
+        return Behaviors.same();
+    }
+
     private Fridge onPostStop() {
         getContext().getLog().info("Fridge actor {}-{} stopped");
         return this;
