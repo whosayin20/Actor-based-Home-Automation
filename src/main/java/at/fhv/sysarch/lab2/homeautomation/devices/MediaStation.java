@@ -30,23 +30,16 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
         }
     }
 
-    public static final class Request implements MediaCommand {
-        public final ActorRef<Blind.BlindCommand> replyTo;
 
-        public Request(ActorRef<Blind.BlindCommand> replyTo) {
-            this.replyTo = replyTo;
-        }
+    public static Behavior<MediaCommand> create(ActorRef<Blind.BlindCommand> blind) {
+        return Behaviors.setup(context -> new MediaStation(context, blind));
     }
 
+    private ActorRef<Blind.BlindCommand> blind;
 
-    public static Behavior<MediaCommand> create() {
-        return Behaviors.setup(context -> new MediaStation(context));
-    }
-
-    private boolean isPlaying;
-
-    private MediaStation(ActorContext<MediaCommand> context) {
+    private MediaStation(ActorContext<MediaCommand> context, ActorRef<Blind.BlindCommand> blind) {
         super(context);
+        this.blind = blind;
         getContext().getLog().info("Mediastation started");
     }
 
@@ -54,17 +47,11 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
     public Receive<MediaCommand> createReceive() {
         return newReceiveBuilder()
                 .onMessage(PlayMovie.class, this::onPlayMovie)
-                .onMessage(Request.class, this::onRequest)
                 .onMessage(PowerMediaStation.class, this::onPowerMediaStationOff)
                 .onSignal(PostStop.class, signal -> onPostStop())
                 .build();
     }
 
-
-    private Behavior<MediaCommand> onRequest(Request request) {
-        request.replyTo.tell(new Blind.Response(Optional.of(isPlaying)));
-        return Behaviors.same();
-    }
 
     private Behavior<MediaCommand> onPowerMediaStationOff(PowerMediaStation p) {
         if (p.value.get() == false) { //and movie not playing
@@ -85,7 +72,6 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
             getContext().getLog().info("Turning On Media Station");
             return Behaviors.receive(MediaCommand.class)
                     .onMessage(PlayMovie.class, this::onPlayMovie)
-                    .onMessage(Request.class, this::onRequest)
                     .onMessage(PowerMediaStation.class, this::onPowerMediaStationOff)
                     .onSignal(PostStop.class, signal -> onPostStop())
                     .build();
@@ -98,10 +84,10 @@ public class MediaStation extends AbstractBehavior<MediaStation.MediaCommand> {
     private Behavior<MediaStation.MediaCommand> onPlayMovie(PlayMovie pm) {
         if(pm.play.get() == true) {
             getContext().getLog().info("Turning on Movie");
-            isPlaying = true;
+            this.blind.tell(new Blind.MovieNotification(Optional.of(Boolean.TRUE)));
         } else {
             getContext().getLog().info("Turning off Movie");
-            isPlaying = false;
+            this.blind.tell(new Blind.MovieNotification(Optional.of(Boolean.FALSE)));
         }
         return Behaviors.same();
     }
