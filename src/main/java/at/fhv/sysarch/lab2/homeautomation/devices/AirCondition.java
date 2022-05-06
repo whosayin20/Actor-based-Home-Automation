@@ -23,10 +23,10 @@ public class AirCondition extends AbstractBehavior<AirCondition.AirConditionComm
     public interface AirConditionCommand {}
 
     public static final class PowerAirCondition implements AirConditionCommand {
-        final Optional<Boolean> value;
+        final Optional<Boolean> isPowerOn;
 
-        public PowerAirCondition(Optional<Boolean> value) {
-            this.value = value;
+        public PowerAirCondition(Optional<Boolean> isPowerOn) {
+            this.isPowerOn = isPowerOn;
         }
     }
 
@@ -60,7 +60,6 @@ public class AirCondition extends AbstractBehavior<AirCondition.AirConditionComm
 
     private Behavior<AirConditionCommand> onReadTemperature(EnrichedTemperature r) {
         getContext().getLog().info("Aircondition reading {}", r.value.get());
-        // TODO: process temperature
         if(r.value.get() >= 20) {
             getContext().getLog().info("Aircondition actived");
         } else {
@@ -70,21 +69,25 @@ public class AirCondition extends AbstractBehavior<AirCondition.AirConditionComm
     }
 
     private Behavior<AirConditionCommand> onPowerAirConditionOff(PowerAirCondition r) {
-        getContext().getLog().info("Turning Aircondition to {}", r.value);
-        if(r.value.get() == false) {
+        if(r.isPowerOn.get() == false) {
+            getContext().getLog().info("Powering Aircondition off");
             return this.powerOff();
+        } else {
+            getContext().getLog().info("Aircondition is already powered on");
         }
         return Behaviors.same();
     }
 
     private Behavior<AirConditionCommand> onPowerAirConditionOn(PowerAirCondition r) {
-        getContext().getLog().info("Turning Aircondition to {}", r.value);
-        if(r.value.get() == true) {
+        if(r.isPowerOn.get() == true) {
+            getContext().getLog().info("Powering Aircondition on");
             return Behaviors.receive(AirConditionCommand.class)
                     .onMessage(EnrichedTemperature.class, this::onReadTemperature)
                     .onMessage(PowerAirCondition.class, this::onPowerAirConditionOff)
                     .onSignal(PostStop.class, signal -> onPostStop())
                     .build();
+        } else {
+            getContext().getLog().info("Aircondition is already powered off");
         }
         return Behaviors.same();
     }

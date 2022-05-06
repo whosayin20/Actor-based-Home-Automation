@@ -1,4 +1,4 @@
-package at.fhv.sysarch.lab2.homeautomation.devices;
+package at.fhv.sysarch.lab2.homeautomation.devices.environment;
 
 
 import akka.actor.typed.ActorRef;

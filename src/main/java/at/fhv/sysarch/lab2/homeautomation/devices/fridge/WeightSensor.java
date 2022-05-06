@@ -1,4 +1,4 @@
-package at.fhv.sysarch.lab2.homeautomation.devices;
+package at.fhv.sysarch.lab2.homeautomation.devices.fridge;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
@@ -16,10 +16,10 @@ public class WeightSensor extends AbstractBehavior<WeightSensor.WeightSensorComm
     public interface WeightSensorCommand { }
 
     public static final class PutWeight implements WeightSensorCommand {
-        public final ActorRef<Fridge.FridgeCommand> replyTo;
+        public final ActorRef<Order.OrderCommand> replyTo;
         final Optional<Product> product;
 
-        public PutWeight(ActorRef<Fridge.FridgeCommand> replyTo, Optional<Product> product) {
+        public PutWeight(ActorRef<Order.OrderCommand> replyTo, Optional<Product> product) {
             this.replyTo = replyTo;
             this.product = product;
         }
@@ -60,9 +60,9 @@ public class WeightSensor extends AbstractBehavior<WeightSensor.WeightSensorComm
         double weight = product.getWeight();
         if(currentWeight + weight <= maxWeight && weight > 0) {
             currentWeight += weight;
-            pw.replyTo.tell(new Fridge.ResponseWeightSensor(Optional.of(Boolean.TRUE), Optional.of(product)));
+            pw.replyTo.tell(new Order.ResponseWeightSensor(Optional.of(Boolean.TRUE), Optional.of(product)));
         } else {
-            pw.replyTo.tell(new Fridge.ResponseWeightSensor(Optional.of(Boolean.FALSE), Optional.of(product)));
+            pw.replyTo.tell(new Order.ResponseWeightSensor(Optional.of(Boolean.FALSE), Optional.of(product)));
         }
         return Behaviors.same();
     }

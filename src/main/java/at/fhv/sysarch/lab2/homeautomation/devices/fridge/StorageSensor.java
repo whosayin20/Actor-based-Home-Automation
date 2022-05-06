@@ -1,4 +1,4 @@
-package at.fhv.sysarch.lab2.homeautomation.devices;
+package at.fhv.sysarch.lab2.homeautomation.devices.fridge;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
@@ -17,10 +17,10 @@ public class StorageSensor extends AbstractBehavior<StorageSensor.StorageSensorC
 
 
     public static final class PutStorage implements StorageSensorCommand {
-        public final ActorRef<Fridge.FridgeCommand> replyTo;
+        public final ActorRef<Order.OrderCommand> replyTo;
         final Optional<Product> product;
 
-        public PutStorage(ActorRef<Fridge.FridgeCommand> replyTo, Optional<Product> product) {
+        public PutStorage(ActorRef<Order.OrderCommand> replyTo, Optional<Product> product) {
             this.replyTo = replyTo;
             this.product = product;
         }
@@ -61,9 +61,9 @@ public class StorageSensor extends AbstractBehavior<StorageSensor.StorageSensorC
         int storage = 1;
         if(currentStorage + storage <= maxStorage && storage > 0) {
             currentStorage += storage;
-            ps.replyTo.tell((new Fridge.ResponseStorageSensor(Optional.of(Boolean.TRUE), Optional.of((product)))));
+            ps.replyTo.tell((new Order.ResponseStorageSensor(Optional.of(Boolean.TRUE), Optional.of((product)))));
         } else {
-            ps.replyTo.tell((new Fridge.ResponseStorageSensor(Optional.of(Boolean.FALSE), Optional.of(product))));
+            ps.replyTo.tell((new Order.ResponseStorageSensor(Optional.of(Boolean.FALSE), Optional.of(product))));
         }
         return Behaviors.same();
     }

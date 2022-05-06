@@ -1,6 +1,5 @@
 package at.fhv.sysarch.lab2.homeautomation;
 
-import akka.actor.Actor;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
@@ -9,10 +8,14 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import at.fhv.sysarch.lab2.homeautomation.devices.*;
+import at.fhv.sysarch.lab2.homeautomation.devices.environment.TemperatureSensor;
+import at.fhv.sysarch.lab2.homeautomation.devices.environment.WeatherSensor;
+import at.fhv.sysarch.lab2.homeautomation.devices.fridge.Fridge;
 import at.fhv.sysarch.lab2.homeautomation.ui.UI;
 
-//erzeugt andere Aktoren, die miteinander kommunizieren. Mit Basiswerten initialisieren
-public class HomeAutomationController extends AbstractBehavior<Void>{ //Controller is der Parent von den anderen
+//Erzeugt andere Aktoren, die miteinander kommunizieren. Mit Basiswerten initialisieren
+//Controller is der Parent von den anderen
+public class HomeAutomationController extends AbstractBehavior<Void>{
     private ActorRef<TemperatureSensor.TemperatureCommand> tempSensor;
     private  ActorRef<AirCondition.AirConditionCommand> airCondition;
     private ActorRef<WeatherSensor.WeatherCommand> weatherSensor;
@@ -26,8 +29,6 @@ public class HomeAutomationController extends AbstractBehavior<Void>{ //Controll
     }
 
     private HomeAutomationController(ActorContext<Void> context) {
-        //AirConditioner nimmt eine referenz vom tempSensor und fragt ihn regelmäßig ab;
-        //Als Listen sammeln, oder controller dient als dispatcher der nachrichten empfangt der abhängig davon einen redirect macht. Der Controller weiß, wer interessiert daran ist
         super(context);
         this.blind = getContext().spawn(Blind.create(), "Blind");
         this.mediasStation = getContext().spawn(MediaStation.create(this.blind), "MediaStation");
