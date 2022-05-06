@@ -7,11 +7,13 @@ import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
-import at.fhv.sysarch.lab2.homeautomation.devices.*;
+import at.fhv.sysarch.lab2.homeautomation.devices.AirCondition;
+import at.fhv.sysarch.lab2.homeautomation.devices.MediaStation;
 import at.fhv.sysarch.lab2.homeautomation.devices.environment.TemperatureSensor;
 import at.fhv.sysarch.lab2.homeautomation.devices.environment.WeatherSensor;
 import at.fhv.sysarch.lab2.homeautomation.devices.fridge.Fridge;
 import at.fhv.sysarch.lab2.homeautomation.products.*;
+
 import java.util.Optional;
 import java.util.Scanner;
 
@@ -22,7 +24,6 @@ public class UI extends AbstractBehavior<Void> {
     private ActorRef<AirCondition.AirConditionCommand> airCondition;
     private ActorRef<WeatherSensor.WeatherCommand> weatherSensor;
     private ActorRef<MediaStation.MediaCommand> mediaStation;
-
     private ActorRef<Fridge.FridgeCommand> fridge;
 
     public static Behavior<Void> create(ActorRef<TemperatureSensor.TemperatureCommand> tempSensor, ActorRef<AirCondition.AirConditionCommand> airCondition, ActorRef<WeatherSensor.WeatherCommand> weatherSensor, ActorRef<MediaStation.MediaCommand> mediaStation, ActorRef<Fridge.FridgeCommand> fridge) {
@@ -51,55 +52,45 @@ public class UI extends AbstractBehavior<Void> {
     }
 
     public void runCommandLine() {
-        // TODO: Create Actor for UI Input-Handling
         Scanner scanner = new Scanner(System.in);
-        String[] input = null;
         String reader = "";
+
+        System.out.println("-----------------COMMANDS----------------");
+        System.out.println("Aircondition Power - AP TRUE/FALSE ");
+        System.out.println("Mediastation Power - MP TRUE/FALSE");
+        System.out.println("Mediastation Play Movie - MPM TRUE/FALSE");
+        System.out.println("Fridge Power - FP TRUE/FALSE");
+        System.out.println("Fridge Order - FO");
+        System.out.println("Fridge Consume - FC");
+        System.out.println("Fridge History - FH");
+        System.out.println("-----------------------------------------");
 
 
         while (!reader.equalsIgnoreCase("quit") && scanner.hasNextLine()) {
             reader = scanner.nextLine();
-            // TODO: change input handling
             String[] command = reader.split(" ");
-            if(command[0].equals("t")) {
-                this.tempSensor.tell(new TemperatureSensor.ReadTemperature(Optional.of(Double.valueOf(command[1])))); //Wer, Was, Wie
-            }
-            if(command[0].equals("w")) {
-                this.weatherSensor.tell(new WeatherSensor.DetermineWeatherCondition(Optional.of(Boolean.valueOf(command[1]))));
-            }
-            if(command[0].equals("a")) {
+            if(command[0].equalsIgnoreCase("ap")) {
                 this.airCondition.tell(new AirCondition.PowerAirCondition(Optional.of(Boolean.valueOf(command[1]))));
             }
-            if(command[0].equals("m")) {
+            if(command[0].equalsIgnoreCase("mp")) {
                 this.mediaStation.tell(new MediaStation.PowerMediaStation(Optional.of(Boolean.valueOf(command[1]))));
             }
-            if(command[0].equals("pl")) {
+            if(command[0].equalsIgnoreCase("mpm")) {
                 this.mediaStation.tell(new MediaStation.PlayMovie(Optional.of(Boolean.valueOf(command[1]))));
             }
-            if(command[0].equals("fo")) {
-                System.out.println("What do do you want to order?");
-                reader = scanner.nextLine();
-                Product p = null;
-                switch (reader) {
-                    case "cheese":
-                        p = new Cheese();
-                        break;
-                    case "egg":
-                        p = new Egg();
-                        break;
-                    case "salad":
-                        p = new Salad();
-                        break;
-                    case "tomato":
-                        p = new Tomato();
-                }
-                this.fridge.tell(new Fridge.OrderProduct(Optional.of(p)));
+            if(command[0].equalsIgnoreCase("fp")) {
+                this.fridge.tell(new Fridge.PowerFridge(Optional.of(Boolean.valueOf(command[1]))));
             }
-            if(command[0].equals("fc")) {
-                System.out.println("What do do you want to consume?");
+            if(command[0].equalsIgnoreCase("fo") || command[0].equals("fc")) {
+                if((command[0].equals("fo"))) {
+                    System.out.println("What do do you want to order?");
+                } else if (command[0].equals("fc")) {
+                    System.out.println("What do do you want to consume?");
+                }
+                System.out.println("Cheese | Egg | Salad | Tomato");
                 reader = scanner.nextLine();
                 Product p = null;
-                switch (reader) {
+                switch (reader.toLowerCase()) {
                     case "cheese":
                         p = new Cheese();
                         break;
@@ -111,8 +102,15 @@ public class UI extends AbstractBehavior<Void> {
                         break;
                     case "tomato":
                         p = new Tomato();
+                    default:
+                        System.out.println("Invalid Product");
                 }
-                this.fridge.tell(new Fridge.Consume(Optional.of(p)));
+
+                if((command[0].equals("fo")) && p != null) {
+                    this.fridge.tell(new Fridge.OrderProduct(Optional.of(p)));
+                } else if (command[0].equals("fc") && p != null) {
+                    this.fridge.tell(new Fridge.Consume(Optional.of(p)));
+                }
             }
             if(command[0].equals("fh")) {
                 this.fridge.tell(new Fridge.ShowHistory());

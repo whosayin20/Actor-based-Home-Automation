@@ -6,6 +6,8 @@ import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
+import at.fhv.sysarch.lab2.homeautomation.devices.environment.Weather;
+
 import java.util.Optional;
 
 public class Blind extends AbstractBehavior<Blind.BlindCommand> {
@@ -13,10 +15,10 @@ public class Blind extends AbstractBehavior<Blind.BlindCommand> {
     }
 
     public static final class OpenCloseBlind implements BlindCommand {
-        final Optional<Boolean> isSunny;
+        final Optional<Weather> weather;
 
-        public OpenCloseBlind(Optional<Boolean> isSunny) {
-            this.isSunny = isSunny;
+        public OpenCloseBlind(Optional<Weather> weather) {
+            this.weather = weather;
         }
     }
 
@@ -49,13 +51,13 @@ public class Blind extends AbstractBehavior<Blind.BlindCommand> {
     }
 
     private Behavior<BlindCommand> onMovieNotification(MovieNotification mn) {
-        isMovieCurrentlyPlaying = mn.isPlaying.get();
-        if(isMovieCurrentlyPlaying) return close();
+        this.isMovieCurrentlyPlaying = mn.isPlaying.get();
+        if(this.isMovieCurrentlyPlaying) return close();
         return Behaviors.same();
     }
 
     private Behavior<BlindCommand> onCloseBlind(OpenCloseBlind ocb) {
-        if (ocb.isSunny.get() == true) {
+        if (ocb.weather.get().equals(Weather.SUNNY)) {
             close();
         }
         return Behaviors.same();
@@ -71,8 +73,8 @@ public class Blind extends AbstractBehavior<Blind.BlindCommand> {
     }
 
     private Behavior<BlindCommand> onOpenBlind(OpenCloseBlind ocb) {
-        if (ocb.isSunny.get() == false) {
-            if (isMovieCurrentlyPlaying == false) {
+        if (ocb.weather.get().equals(Weather.CLOUDY)) {
+            if (!this.isMovieCurrentlyPlaying) {
                 getContext().getLog().info("Opening Blind");
                 return this.createReceive();
             } else {

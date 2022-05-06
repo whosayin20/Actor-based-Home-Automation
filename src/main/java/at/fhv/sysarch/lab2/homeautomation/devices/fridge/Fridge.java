@@ -83,7 +83,7 @@ public class Fridge extends AbstractBehavior<Fridge.FridgeCommand> {
     private Fridge(ActorContext<FridgeCommand> context, TimerScheduler<Fridge.FridgeCommand> fridgeTimer) {
         super(context);
         this.fridgeTimeScheduler = fridgeTimer;
-        this.fridgeTimeScheduler.startTimerAtFixedRate(new Fridge.ControlProducts(), Duration.ofSeconds(60));
+        this.fridgeTimeScheduler.startTimerAtFixedRate(new Fridge.ControlProducts(), Duration.ofSeconds(30));
         this.weightSensor = getContext().spawn(WeightSensor.create(80), "weightSensor");
         this.storageSensor = getContext().spawn(StorageSensor.create(2), "storageSensor");
         this.productQuantity = new HashMap<>();

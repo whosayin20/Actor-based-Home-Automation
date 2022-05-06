@@ -15,10 +15,10 @@ public class WeatherSensor extends AbstractBehavior<WeatherSensor.WeatherCommand
     public interface WeatherCommand {}
 
     public static final class DetermineWeatherCondition implements WeatherCommand {
-        final Optional<Boolean> isSunny;
+        final Optional<Weather> weather;
 
-        public DetermineWeatherCondition(Optional<Boolean> isSunny) {
-            this.isSunny = isSunny;
+        public DetermineWeatherCondition(Optional<Weather> weather) {
+            this.weather = weather;
         }
     }
 
@@ -42,9 +42,9 @@ public class WeatherSensor extends AbstractBehavior<WeatherSensor.WeatherCommand
     }
 
     private Behavior<WeatherSensor.WeatherCommand> onReadWeather(DetermineWeatherCondition r) {
-        String condition = r.isSunny.get() ? "SUNNY weather" : "CLOUDY weather";
-        getContext().getLog().info("WeatherSensor detected {}", condition);
-        this.blind.tell(new Blind.OpenCloseBlind(r.isSunny));
+        Weather weather = r.weather.get();
+        getContext().getLog().info("WeatherSensor detected {} weather", weather);
+        this.blind.tell(new Blind.OpenCloseBlind(Optional.of(weather)));
         return this;
     }
 

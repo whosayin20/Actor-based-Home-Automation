@@ -5,6 +5,6 @@ import java.math.BigDecimal;
 public class Egg extends Product {
     public Egg() {
 
-        super("Egg", 4, new BigDecimal(3.42));
+        super("Free Range Egg", 4, new BigDecimal(3.42));
     }
 }

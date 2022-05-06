@@ -36,13 +36,6 @@ public class Order extends AbstractBehavior<Order.OrderCommand>  {
         }
     }
 
-    public static final class StartOrderProcess implements OrderCommand {
-        final Optional<Product> product;
-        public StartOrderProcess(Optional<Product> product) {
-            this.product = product;
-        }
-    }
-
     public static final class CommitOrder implements OrderCommand {
         final Optional<Product> product;
 
@@ -69,26 +62,22 @@ public class Order extends AbstractBehavior<Order.OrderCommand>  {
         this.fridge = fridge;
         this.weightSensor = weightSensor;
         this.storageSensor = storageSensor;
-        getContext().getSelf().tell(new Order.StartOrderProcess(Optional.of(product)));
+        startOrderProcess(product);
     }
 
     @Override
     public Receive<OrderCommand> createReceive() {
         return newReceiveBuilder()
                 .onMessage(CommitOrder.class, this::onCommitOrder)
-                .onMessage(StartOrderProcess.class, this::onStartOrderProcess)
                 .onMessage(ResponseWeightSensor.class, this::onResponseWeightSensor)
                 .onMessage(ResponseStorageSensor.class, this::onResponseStorageSensor)
                 .onSignal(PostStop.class, signal -> onPostStop())
                 .build();
     }
 
-    public Behavior<OrderCommand> onStartOrderProcess(StartOrderProcess sop) {
-        getContext().getLog().info("Starting Order Process");
-
-        Product product = sop.product.get();
+    public void startOrderProcess(Product product) {
+        getContext().getLog().info("Starting Order Process for {}", product.getClass().getSimpleName());
         this.weightSensor.tell(new WeightSensor.PutWeight(super.getContext().getSelf(), Optional.of(product)));
-        return Behaviors.same();
     }
 
     private Behavior<OrderCommand> onResponseWeightSensor(ResponseWeightSensor rws) {

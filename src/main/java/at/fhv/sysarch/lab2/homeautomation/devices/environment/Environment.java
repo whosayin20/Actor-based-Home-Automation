@@ -5,32 +5,29 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
 import akka.actor.typed.javadsl.*;
-import java.math.BigDecimal;
+
 import java.time.Duration;
 import java.util.Optional;
-import java.util.Random;
 
 public class Environment extends AbstractBehavior<Environment.EnvironmentCommand> {
 
-    public interface EnvironmentCommand {}
+    public interface EnvironmentCommand {
+    }
 
     public static final class TemperatureChanger implements EnvironmentCommand {
-        public TemperatureChanger() {}
+        public TemperatureChanger() { }
     }
 
     public static final class WeatherConditionsChanger implements EnvironmentCommand {
-        final Optional<Boolean> isSunny;
-
-        public WeatherConditionsChanger(Optional<Boolean> isSunny)  {this.isSunny = isSunny; }
+        public WeatherConditionsChanger() { }
     }
 
     public static Behavior<EnvironmentCommand> create(ActorRef<TemperatureSensor.TemperatureCommand> tempSensor, ActorRef<WeatherSensor.WeatherCommand> weatherSensor) {
         return Behaviors.setup(context -> Behaviors.withTimers(timers -> new Environment(context, timers, timers, tempSensor, weatherSensor)));
     }
 
-    private double temperature = 20;
-    private boolean isSunny = false;
-
+    private double temperature = 14;
+    private Weather weather = Weather.CLOUDY;
     private final TimerScheduler<EnvironmentCommand> temperatureTimeScheduler;
     private final TimerScheduler<EnvironmentCommand> weatherTimeScheduler;
     private ActorRef<TemperatureSensor.TemperatureCommand> tempSensor;
@@ -40,8 +37,8 @@ public class Environment extends AbstractBehavior<Environment.EnvironmentCommand
         super(context);
         this.temperatureTimeScheduler = tempTimer;
         this.weatherTimeScheduler = weatherTimer;
-        this.temperatureTimeScheduler.startTimerAtFixedRate(new TemperatureChanger(), Duration.ofSeconds(5));
-        this.weatherTimeScheduler.startTimerAtFixedRate(new WeatherConditionsChanger(Optional.of(isSunny)), Duration.ofSeconds(30));
+        this.temperatureTimeScheduler.startTimerAtFixedRate(new TemperatureChanger(), Duration.ofSeconds(10));
+        this.weatherTimeScheduler.startTimerAtFixedRate(new WeatherConditionsChanger(), Duration.ofSeconds(30));
         this.tempSensor = tempSensor;
         this.weatherSensor = weatherSensor;
         getContext().getLog().info("Environment ready for simulation");
@@ -57,17 +54,21 @@ public class Environment extends AbstractBehavior<Environment.EnvironmentCommand
     }
 
     private Behavior<EnvironmentCommand> onChangeTemperature(TemperatureChanger t) {
-        Random random = new Random();
-        double value = BigDecimal.valueOf(random.nextDouble()).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
+        int value = (int) (Math.random() * 4 + 1);
         this.temperature += value;
         this.tempSensor.tell(new TemperatureSensor.ReadTemperature(Optional.of(this.temperature)));
-        getContext().getLog().info("Temperature changed " + temperature );
         return this;
     }
 
     private Behavior<EnvironmentCommand> onChangeWeather(WeatherConditionsChanger w) {
-        this.temperature = 10;
-        this.weatherSensor.tell(new WeatherSensor.DetermineWeatherCondition(Optional.of(this.isSunny)));
+        this.weather = this.weather == Weather.SUNNY ? Weather.CLOUDY : Weather.SUNNY;
+
+        if (this.weather.equals(Weather.CLOUDY)) {
+            //Temperature drops to 14°C if it is cloudy
+            this.temperature = 14;
+            this.tempSensor.tell(new TemperatureSensor.ReadTemperature(Optional.of(this.temperature)));
+        }
+        this.weatherSensor.tell(new WeatherSensor.DetermineWeatherCondition(Optional.of(this.weather)));
         return this;
     }
 

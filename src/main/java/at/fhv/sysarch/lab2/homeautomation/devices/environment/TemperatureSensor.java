@@ -39,7 +39,7 @@ public class TemperatureSensor extends AbstractBehavior<TemperatureSensor.Temper
     @Override
     public Receive<TemperatureCommand> createReceive() {
         return newReceiveBuilder()
-                .onMessage(ReadTemperature.class, this::onReadTemperature) //WEnn ich diesen Nachrichtentyp erhalte, rufe bis onReadTemperature auf --> Reaktion auf Nachrichten. Hier kann man auch filtern
+                .onMessage(ReadTemperature.class, this::onReadTemperature) //Wenn ich diesen Nachrichtentyp erhalte, rufe bis onReadTemperature auf --> Reaktion auf Nachrichten. Hier kann man auch filtern
                 .onSignal(PostStop.class, signal -> onPostStop())
                 .build();
     }
@@ -47,7 +47,7 @@ public class TemperatureSensor extends AbstractBehavior<TemperatureSensor.Temper
     private Behavior<TemperatureCommand> onReadTemperature(ReadTemperature r) {
         getContext().getLog().info("TemperatureSensor received {}", r.value.get());
         this.airCondition.tell(new AirCondition.EnrichedTemperature(r.value, Optional.of("Celsius")));
-        return this; //Behaviors.same ist das gleiche; Das Gleiche Verhalten wird beim nächsten mal erwartet. Man kann auch sagen, dass er sich komplett anders Verhalten soll
+        return this; //Behaviors.same ist das gleiche; Das Gleiche Verhalten wird beim nächsten Mal erwartet. Man kann auch sagen, dass er sich komplett anders Verhalten soll
     }
 
     private TemperatureSensor onPostStop() {
