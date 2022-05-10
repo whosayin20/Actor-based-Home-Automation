@@ -19,14 +19,14 @@ import akka.actor.typed.javadsl.Receive;
  */
 import java.util.Optional;
 
-public class AirCondition extends AbstractBehavior<AirCondition.AirConditionCommand> { //Es ist ein Aktor
+public class AirCondition extends AbstractBehavior<AirCondition.AirConditionCommand> {
     public interface AirConditionCommand {}
 
     public static final class PowerAirCondition implements AirConditionCommand {
-        final Optional<Boolean> value;
+        final Optional<Boolean> isPowerOn;
 
-        public PowerAirCondition(Optional<Boolean> value) {
-            this.value = value;
+        public PowerAirCondition(Optional<Boolean> isPowerOn) {
+            this.isPowerOn = isPowerOn;
         }
     }
 
@@ -40,20 +40,13 @@ public class AirCondition extends AbstractBehavior<AirCondition.AirConditionComm
         }
     }
 
-    private final String groupId;
-    private final String deviceId;
-    private boolean active = false;
-    private boolean poweredOn = true;
-
-    public AirCondition(ActorContext<AirConditionCommand> context, String groupId, String deviceId) {
-        super(context);
-        this.groupId = groupId;
-        this.deviceId = deviceId;
-        getContext().getLog().info("AirCondition started");
+    public static Behavior<AirConditionCommand> create() {
+        return Behaviors.setup(context -> new AirCondition(context));
     }
 
-    public static Behavior<AirConditionCommand> create(String groupId, String deviceId) {
-        return Behaviors.setup(context -> new AirCondition(context, groupId, deviceId));
+    private AirCondition(ActorContext<AirConditionCommand> context) {
+        super(context);
+        getContext().getLog().info("AirCondition started");
     }
 
     @Override
@@ -66,44 +59,39 @@ public class AirCondition extends AbstractBehavior<AirCondition.AirConditionComm
     }
 
     private Behavior<AirConditionCommand> onReadTemperature(EnrichedTemperature r) {
-        getContext().getLog().info("Aircondition reading {}", r.value.get());
-        // TODO: process temperature
-        if(r.value.get() >= 15) {
+        if(r.value.get() >= 20) {
             getContext().getLog().info("Aircondition actived");
-            this.active = true;
-        }
-        else {
+        } else {
             getContext().getLog().info("Aircondition deactived");
-            this.active =  false;
         }
-
         return Behaviors.same();
     }
 
     private Behavior<AirConditionCommand> onPowerAirConditionOff(PowerAirCondition r) {
-        getContext().getLog().info("Turning Aircondition to {}", r.value);
-
-        if(r.value.get() == false) {
+        if(r.isPowerOn.get() == false) {
+            getContext().getLog().info("Powering Aircondition off");
             return this.powerOff();
+        } else {
+            getContext().getLog().info("Aircondition is already powered on");
         }
-        return this;
+        return Behaviors.same();
     }
 
     private Behavior<AirConditionCommand> onPowerAirConditionOn(PowerAirCondition r) {
-        getContext().getLog().info("Turning Aircondition to {}", r.value);
-
-        if(r.value.get() == true) {
+        if(r.isPowerOn.get() == true) {
+            getContext().getLog().info("Powering Aircondition on");
             return Behaviors.receive(AirConditionCommand.class)
                     .onMessage(EnrichedTemperature.class, this::onReadTemperature)
                     .onMessage(PowerAirCondition.class, this::onPowerAirConditionOff)
                     .onSignal(PostStop.class, signal -> onPostStop())
                     .build();
+        } else {
+            getContext().getLog().info("Aircondition is already powered off");
         }
-        return this;
+        return Behaviors.same();
     }
 
     private Behavior<AirConditionCommand> powerOff() {
-        this.poweredOn = false;
         return Behaviors.receive(AirConditionCommand.class)
                 .onMessage(PowerAirCondition.class, this::onPowerAirConditionOn)
                 .onSignal(PostStop.class, signal -> onPostStop())
@@ -111,7 +99,7 @@ public class AirCondition extends AbstractBehavior<AirCondition.AirConditionComm
     }
 
     private AirCondition onPostStop() {
-        getContext().getLog().info("TemperatureSensor actor {}-{} stopped", groupId, deviceId);
+        getContext().getLog().info("TemperatureSensor actor {}-{} stopped");
         return this;
     }
 }

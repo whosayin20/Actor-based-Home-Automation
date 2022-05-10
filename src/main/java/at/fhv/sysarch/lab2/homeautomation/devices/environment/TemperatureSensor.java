@@ -1,4 +1,4 @@
-package at.fhv.sysarch.lab2.homeautomation.devices;
+package at.fhv.sysarch.lab2.homeautomation.devices.environment;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
@@ -7,6 +7,7 @@ import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
+import at.fhv.sysarch.lab2.homeautomation.devices.AirCondition;
 
 import java.util.Optional;
 
@@ -22,19 +23,15 @@ public class TemperatureSensor extends AbstractBehavior<TemperatureSensor.Temper
         }
     }
 
-    public static Behavior<TemperatureCommand> create(ActorRef<AirCondition.AirConditionCommand> airCondition, String groupId, String deviceId) {
-        return Behaviors.setup(context -> new TemperatureSensor(context, airCondition, groupId, deviceId));
+    public static Behavior<TemperatureCommand> create(ActorRef<AirCondition.AirConditionCommand> airCondition) {
+        return Behaviors.setup(context -> new TemperatureSensor(context, airCondition));
     }
 
-    private final String groupId;
-    private final String deviceId;
     private ActorRef<AirCondition.AirConditionCommand> airCondition;
 
-    public TemperatureSensor(ActorContext<TemperatureCommand> context, ActorRef<AirCondition.AirConditionCommand> airCondition, String groupId, String deviceId) {
+    private TemperatureSensor(ActorContext<TemperatureCommand> context, ActorRef<AirCondition.AirConditionCommand> airCondition) {
         super(context);
         this.airCondition = airCondition;
-        this.groupId = groupId;
-        this.deviceId = deviceId;
 
         getContext().getLog().info("TemperatureSensor started");
     }
@@ -42,7 +39,7 @@ public class TemperatureSensor extends AbstractBehavior<TemperatureSensor.Temper
     @Override
     public Receive<TemperatureCommand> createReceive() {
         return newReceiveBuilder()
-                .onMessage(ReadTemperature.class, this::onReadTemperature) //WEnn ich diesen Nachrichtentyp erhalte, rufe bis onReadTemperature auf --> Reaktion auf Nachrichten. Hier kann man auch filtern
+                .onMessage(ReadTemperature.class, this::onReadTemperature) //Wenn ich diesen Nachrichtentyp erhalte, rufe bis onReadTemperature auf --> Reaktion auf Nachrichten. Hier kann man auch filtern
                 .onSignal(PostStop.class, signal -> onPostStop())
                 .build();
     }
@@ -50,11 +47,11 @@ public class TemperatureSensor extends AbstractBehavior<TemperatureSensor.Temper
     private Behavior<TemperatureCommand> onReadTemperature(ReadTemperature r) {
         getContext().getLog().info("TemperatureSensor received {}", r.value.get());
         this.airCondition.tell(new AirCondition.EnrichedTemperature(r.value, Optional.of("Celsius")));
-        return this; //Behaviors.same ist das gleiche; Das Gleiche Verhalten wird beim nächsten mal erwartet. Man kann auch sagen, dass er sich komplett anders Verhalten soll
+        return this; //Behaviors.same ist das gleiche; Das Gleiche Verhalten wird beim nächsten Mal erwartet. Man kann auch sagen, dass er sich komplett anders Verhalten soll
     }
 
     private TemperatureSensor onPostStop() {
-        getContext().getLog().info("TemperatureSensor actor {}-{} stopped", groupId, deviceId);
+        getContext().getLog().info("TemperatureSensor actor {}-{} stopped");
         return this;
     }
 
