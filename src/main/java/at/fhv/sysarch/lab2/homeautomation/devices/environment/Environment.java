@@ -11,7 +11,16 @@ import java.util.Optional;
 
 public class Environment extends AbstractBehavior<Environment.EnvironmentCommand> {
 
+    private final int TEMPERATURE_SCHEDULER = 10;
+    private final int WEATHER_SCHEDULER = 30;
+
     public interface EnvironmentCommand {
+    }
+
+    public static final class ActivateEnvironment implements EnvironmentCommand {
+        final Optional<Boolean> isActive;
+        public ActivateEnvironment(Optional<Boolean> isActive) {
+            this.isActive = isActive; }
     }
 
     public static final class TemperatureChanger implements EnvironmentCommand {
@@ -37,8 +46,8 @@ public class Environment extends AbstractBehavior<Environment.EnvironmentCommand
         super(context);
         this.temperatureTimeScheduler = tempTimer;
         this.weatherTimeScheduler = weatherTimer;
-        this.temperatureTimeScheduler.startTimerAtFixedRate(new TemperatureChanger(), Duration.ofSeconds(10));
-        this.weatherTimeScheduler.startTimerAtFixedRate(new WeatherConditionsChanger(), Duration.ofSeconds(30));
+        this.temperatureTimeScheduler.startTimerAtFixedRate(new TemperatureChanger(), Duration.ofSeconds(TEMPERATURE_SCHEDULER));
+        this.weatherTimeScheduler.startTimerAtFixedRate(new WeatherConditionsChanger(), Duration.ofSeconds(WEATHER_SCHEDULER));
         this.tempSensor = tempSensor;
         this.weatherSensor = weatherSensor;
         getContext().getLog().info("Environment ready for simulation");
@@ -47,10 +56,24 @@ public class Environment extends AbstractBehavior<Environment.EnvironmentCommand
     @Override
     public Receive<EnvironmentCommand> createReceive() {
         return newReceiveBuilder()
+                .onMessage(ActivateEnvironment.class, this::onActivateEnvironment)
                 .onMessage(TemperatureChanger.class, this::onChangeTemperature)
                 .onMessage(WeatherConditionsChanger.class, this::onChangeWeather)
                 .onSignal(PostStop.class, signal -> onPostStop())
                 .build();
+    }
+
+    private Behavior<EnvironmentCommand> onActivateEnvironment(ActivateEnvironment ae) {
+        if(ae.isActive.get()) {
+            getContext().getLog().info("Environment active");
+            this.temperatureTimeScheduler.startTimerAtFixedRate(new TemperatureChanger(), Duration.ofSeconds(TEMPERATURE_SCHEDULER));
+            this.weatherTimeScheduler.startTimerAtFixedRate(new WeatherConditionsChanger(), Duration.ofSeconds(WEATHER_SCHEDULER));
+        } else {
+            getContext().getLog().info("Environment stopped");
+            this.temperatureTimeScheduler.cancelAll();
+            this.weatherTimeScheduler.cancelAll();
+        }
+        return this;
     }
 
     private Behavior<EnvironmentCommand> onChangeTemperature(TemperatureChanger t) {
