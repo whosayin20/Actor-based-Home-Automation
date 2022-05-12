@@ -2,8 +2,17 @@
 Hüseyin Arziman & Yusuf Cetinkaya
 
 ## General
+The actor model is a model for concurrent calculations. These are divided into so-called actors, which communicate via message
+exchange. It was first described in 1973 by Carl Hewitt, Peter Bishop and Richard Steiger. Each actor has an inbox, an address
+and a behaviour. The reception of a message is called an event. Received messages are first stored in the inbox. The actor processes
+the messages contained therein according to the FIFO principle. The behaviour of the actor describes reactions to messages depending
+on their structure. Actors can perform three different reactions:<br>
 
-In this lab exercise... <br>
+- Send messages to itself or other actors.
+- Create new actors.
+- Change its own behaviour.
+
+###In this lab exercise... <br>
 The aim of this exercise was to control a sensor-driven part of a smart home by applying actor-based architecture using the AKKA-framework.
 The sensors have two different properties. One is the outside temperature and the other is the weather. Driven by
 these two properties, the individual actuators change their behaviour. These systems include: an air conditioner, 
