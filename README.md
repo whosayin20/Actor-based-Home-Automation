@@ -12,7 +12,6 @@ on their structure. Actors can perform three different reactions:<br>
 - Create new actors.
 - Change its own behaviour.
 
-###In this lab exercise... <br>
 The aim of this exercise was to control a sensor-driven part of a smart home by applying actor-based architecture using the AKKA-framework.
 The sensors have two different properties. One is the outside temperature and the other is the weather. Driven by
 these two properties, the individual actuators change their behaviour. These systems include: an air conditioner, 
