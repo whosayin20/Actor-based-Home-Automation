@@ -2,23 +2,37 @@
 Hüseyin Arziman & Yusuf Cetinkaya
 
 ## General
+The actor model is a model for concurrent calculations. These are divided into concurrent
+units, so-called actors, which communicate exclusively via message exchange. It thus represents a possible form of 
+message passing. It was first described in 1973 by Carl Hewitt, Peter Bishop and Richard Steiger.
+Actors are concurrent units that do not have a shared memory area but communicate exclusively via messages. Each actor
+has an inbox, an address and a behaviour. The reception of a message is called an event. Received messages are first 
+stored in the inbox. The actor processes the messages contained therein according to the FIFO principle. The behaviour
+of the actor describes reactions to messages depending on their structure. Actors can perform three different reactions: <br>
 
-In this lab exercise...
+- Send messages to itself or other actors.
+- Create new actors.
+- Change its own behaviour.
+
+The message exchange is asynchronous, i.e. the sender of a message can immediately continue with other actions after sending
+it and does not have to wait until the receiver accepts the message.
+
+##In this lab exercise
 
 ![img.png](img.png)
 
-## Components:
+### Components:
 
-## Air Condition
-
-
-## Blind
+### Air Condition
 
 
-## Media Station
+### Blind
 
 
-## Fridge
+### Media Station
+
+
+### Fridge
 In addition, it was part of the task to implement a fridge including its components. 
 The `fridge` is a stand-alone actor that is independent of the smart home. 
 It contains a `weight sensor` and a `storage sensor`, which were also implemented as actors. 
