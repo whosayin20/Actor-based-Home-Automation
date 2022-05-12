@@ -7,7 +7,7 @@ In this lab exercise...
 
 ![img.png](img.png)
 
-## Components:
+<h1> Components: </h1>
 
 
 ## Air Condition
